@@ -97,6 +97,10 @@ Common patterns:
 - debug_on
 - if condition:
 - else statement
+- try:
+- except Exception as err:
+- except:
+- finally:
 - foreach list as item:
 - loopCsv "cities.csv" as city:
 

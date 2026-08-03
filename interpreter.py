@@ -158,6 +158,39 @@ def translate_line(line):
         statement = translate_expr(match.group(1))
         return f"{indent}}} else {{ {statement}; }}{comment_tail}\n", False, True
 
+    # 5c. try:
+    if re.match(r"^try\s*:$", stripped):
+        return f"{indent}try {{{comment_tail}\n", True, False
+
+    # 5d. except ExceptionType as err:
+    match = re.match(
+        r"^except\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\s*:$",
+        stripped,
+    )
+    if match:
+        exc_type, exc_var = match.groups()
+        php_exc_type = exc_type if exc_type.startswith("\\") else f"\\{exc_type}"
+        return (
+            f"{indent}}} catch ({php_exc_type} ${exc_var}) {{{comment_tail}\n",
+            True,
+            True,
+        )
+
+    # 5e. except ExceptionType:
+    match = re.match(r"^except\s+([A-Za-z_\\][A-Za-z0-9_\\]*)\s*:$", stripped)
+    if match:
+        exc_type = match.group(1)
+        php_exc_type = exc_type if exc_type.startswith("\\") else f"\\{exc_type}"
+        return f"{indent}}} catch ({php_exc_type} $e) {{{comment_tail}\n", True, True
+
+    # 5f. except:
+    if re.match(r"^except\s*:$", stripped):
+        return f"{indent}}} catch (\\Throwable $e) {{{comment_tail}\n", True, True
+
+    # 5g. finally:
+    if re.match(r"^finally\s*:$", stripped):
+        return f"{indent}}} finally {{{comment_tail}\n", True, True
+
     # 6. loopCsv "file.csv" as city:
     match = re.match(r'^loopCsv\s+(["\'].+?["\'])\s+as\s+(.+?):$', stripped)
     if match:
@@ -348,7 +381,9 @@ def compile_file(filepath):
                 # Close blocks whose indentation is higher than current line.
                 # If current line is else, keep same-level block open for proper } else { emission.
                 stripped_check = line.strip()
-                is_current_else = bool(re.match(r"^else(\s|$)", stripped_check))
+                is_current_else = bool(
+                    re.match(r"^(else|except|finally)(\s|$|:)", stripped_check)
+                )
 
                 while block_stack and (
                     block_stack[-1] > current_indent
