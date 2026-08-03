@@ -60,3 +60,5 @@ $response_status = $response['status'];
 $api_payload = $response['body'];
 
 respondJson(['status' => "success", 'http_status' => $response_status, 'ok' => $response_ok, 'api' => $api_payload]); // exits and returns json headers
+
+?>

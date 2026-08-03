@@ -1,0 +1,24 @@
+#?
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sergi Alvarez Triviño
+# Database profiles: use connectDb("dbName") from your .pyh files
+setDbConfig("dbName", [driver->"mysql", host->"127.0.0.1", dbname->"neohp_app", username->"root", password->"", charset->"utf8mb4", default_table->"users"])
+
+# Optional fallback profile for quick local testing
+setDbConfig("localSqlite", [driver->"sqlite", sqlite_path->"./database.sqlite", default_table->"users"])
+
+setDefaultDb("dbName")
+
+# Telegram defaults. pingTelegram(botId, message) can use these values.
+setTelegramConfig("REPLACE_BOT_TOKEN", "REPLACE_CHAT_ID")
+
+# Values used by index.pyh sample
+extraSqlParams = "ORDER BY id DESC LIMIT 20"
+tableName = "users"
+url = "https://api.example.com/leads"
+headers = ["Accept: application/json", "Content-Type: application/x-www-form-urlencoded"]
+arrayData = [name->"john", email->"john@gmail.com"]
+
+# select() default table fallback
+setDefaultTable(tableName)
+?#
