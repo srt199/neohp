@@ -1,6 +1,6 @@
 #?
 include config.pyh
-Debug_on # enables ini errors
+debug_on # enables ini errors
 arrayPost = sanitize(getPost) # gets all values received via post 
 db = connectDb("dbName") # host, pass, etc in config file w its name
 dbData = select(db, "id=3 AND name=john", extraSqlParams)

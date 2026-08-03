@@ -1,0 +1,4 @@
+slugify
+redirect
+setSession
+setLocalstorage
