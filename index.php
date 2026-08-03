@@ -1,6 +1,8 @@
 <?php
 include_once __DIR__ . '/helpers.php';
 
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Sergi Alvarez Triviño
 include_once 'config.php';
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');

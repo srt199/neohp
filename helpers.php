@@ -1,4 +1,6 @@
 <?php
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Sergi Alvarez Triviño
 
 function sanitize($value) {
     if (is_array($value)) {

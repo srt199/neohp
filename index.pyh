@@ -1,4 +1,6 @@
 #?
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sergi Alvarez Triviño
 include config.pyh
 debug_on # enables ini errors
 arrayPost = sanitize(getPost) # gets all values received via post

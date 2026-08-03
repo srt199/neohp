@@ -1,4 +1,6 @@
 #?
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Sergi Alvarez Triviño
 # Database profiles: use connectDb("dbName") from your .pyh files
 setDbConfig("dbName", [driver->"mysql", host->"127.0.0.1", dbname->"neohp_app", username->"root", password->"", charset->"utf8mb4", default_table->"users"])
 

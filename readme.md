@@ -163,4 +163,4 @@ If you propose a new syntax command, include:
 
 ## License
 
-Add your preferred license here (for example MIT).
+MIT. See [LICENSE](LICENSE).
