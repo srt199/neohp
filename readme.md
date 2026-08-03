@@ -14,7 +14,7 @@ It is designed for fast web prototyping: write short backend logic directly insi
 - Easier, faster syntax for common PHP functions.
 - Python style code you can embed inside your HTML + JS files to handle data. No compile times like frameworks.
 - Keep generated output as normal PHP you can deploy anywhere.
-- Current version aimed for web design and light backend tasks (You can also embed any PHP code for any missing functions you need inside the .pyh files)
+- Current version aimed for web design and light backend tasks (You can also use any PHP code you want next to the python-style code, when you need more functions still not implemented)
 
 ## How It Works
 
