@@ -1,8 +1,8 @@
 # Neohp
 
-Neohp is a lightweight Python-style syntax layer that compiles .pyh files into plain PHP.
+Neohp is a lightweight Python-style syntax layer that compiles into plain PHP.
 
-It is designed for fast web prototyping: write short backend logic directly inside HTML pages, then compile to readable PHP files that can run on standard hosting.
+It is designed for fast web prototyping: write short backend logic directly inside HTML pages, then it converts it into readable PHP files that can run on any standard hosting.
 
 ![Language](https://img.shields.io/badge/language-Python--style-blue)
 ![Output](https://img.shields.io/badge/output-PHP-777bb4)
@@ -50,7 +50,7 @@ Requirements:
 
 Install and compile:
 
-	git clone <your-repo-url>
+	git clone https://github.com/srt199/neohp
 	cd neohp
 	python3 interpreter.py .
 
@@ -170,6 +170,7 @@ Neohp compiles shorthand to helper calls in helpers.php, including:
 
 ## Current Limitations
 
+- I have only implemented some functions that were useful on my day to day web development work and I wanted to simplify, by now.
 - Watch mode uses polling (mtime checks), not OS-level filesystem events.
 - Some advanced nested shorthand patterns are still evolving.
 - Multiline object literals in .pyh are limited; prefer single-line arrays for now.
