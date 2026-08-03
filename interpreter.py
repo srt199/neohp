@@ -3,6 +3,86 @@ import re
 import sys
 
 
+SPACE_CALL_ARITY = {
+    "slugify": 1,
+    "slugToWord": 2,
+    "parse": 3,
+    "replaceInPageText": 2,
+    "redirect": 1,
+    "setSession": 2,
+    "getSession": 1,
+    "setLocalstorage": 2,
+    "getLocalstorage": 1,
+}
+
+
+def split_inline_comment(line):
+    in_single = False
+    in_double = False
+
+    for i, ch in enumerate(line):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if ch == "#" and not in_single and not in_double:
+            return line[:i].rstrip(), line[i + 1 :].strip()
+
+    return line.rstrip(), ""
+
+
+def split_top_level_whitespace(payload, expected_parts):
+    parts = []
+    buff = []
+    depth = 0
+    in_single = False
+    in_double = False
+
+    for ch in payload:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            buff.append(ch)
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            buff.append(ch)
+            continue
+
+        if not in_single and not in_double:
+            if ch in "([{" :
+                depth += 1
+            elif ch in ")]}":
+                depth = max(0, depth - 1)
+
+            if ch.isspace() and depth == 0 and len(parts) < expected_parts - 1:
+                current = "".join(buff).strip()
+                if current:
+                    parts.append(current)
+                    buff = []
+                continue
+
+        buff.append(ch)
+
+    tail = "".join(buff).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def normalize_space_call(expr):
+    stripped = expr.strip()
+    for fn_name, arity in SPACE_CALL_ARITY.items():
+        prefix = f"{fn_name} "
+        if stripped.startswith(prefix) and not stripped.startswith(f"{fn_name}("):
+            payload = stripped[len(prefix) :].strip()
+            args = split_top_level_whitespace(payload, arity)
+            if len(args) == arity:
+                return f"{fn_name}({', '.join(args)})"
+    return expr
+
+
 def load_space_functions():
     """Loads allowed space-separated function names from lib/spaceFunctions.txt"""
     path = os.path.join("lib", "spaceFunctions.txt")
@@ -21,106 +101,150 @@ def translate_line(line):
     indent = indent_match.group(1) if indent_match else ""
     stripped = line.strip()
 
-    if not stripped or stripped.startswith("#"):
-        return line, False, False  # line, opens_block, is_else
+    if not stripped:
+        return "\n", False, False  # line, opens_block, is_else
+
+    if stripped.startswith("#"):
+        return f"{indent}// {stripped[1:].strip()}\n", False, False
+
+    code, inline_comment = split_inline_comment(stripped)
+    stripped = code.strip()
+    comment_tail = f" // {inline_comment}" if inline_comment else ""
+
+    if not stripped:
+        return f"{indent}// {inline_comment}\n" if inline_comment else "\n", False, False
 
     # 1. include config.pyh -> include_once 'config.php';
     if stripped.startswith("include "):
         mod = stripped[len("include ") :].strip()
         mod_php = re.sub(r"\.pyh$", ".php", mod, flags=re.IGNORECASE)
-        return f"{indent}include_once '{mod_php}';\n", False, False
+        return f"{indent}include_once '{mod_php}';{comment_tail}\n", False, False
 
     # 2. Debug_on -> PHP error settings
     if stripped.lower() == "debug_on":
         code = (
             f"{indent}ini_set('display_errors', '1');\n"
             f"{indent}ini_set('display_startup_errors', '1');\n"
-            f"{indent}error_reporting(E_ALL);\n"
+            f"{indent}error_reporting(E_ALL);{comment_tail}\n"
         )
         return code, False, False
 
     # 3. foreach dbData as row:
-    match = re.match(r"^foreach\s+(.+?)\s+as\s+(.+?):$", stripped)
+    match = re.match(r"^foreach\s+(.+?)\s+as\s+(.+?)\s*:$", stripped)
     if match:
         arr, var = match.groups()
         return (
-            f"{indent}foreach ({translate_expr(arr)} as ${var}) {{\n",
+            f"{indent}foreach ({translate_expr(arr)} as ${var.strip()}) {{{comment_tail}\n",
             True,
             False,
         )
 
     # 4. if condition:
-    match = re.match(r"^if\s+(.+?):$", stripped)
+    match = re.match(r"^if\s+(.+?)\s*:$", stripped)
     if match:
         cond = match.group(1)
-        return f"{indent}if ({translate_expr(cond)}) {{\n", True, False
+        return f"{indent}if ({translate_expr(cond)}) {{{comment_tail}\n", True, False
 
     # 5. else -> } else {
     if stripped == "else":
-        return f"{indent}}} else {{\n", True, True
+        return f"{indent}}} else {{{comment_tail}\n", True, True
+
+    # 5b. else x = y  -> } else { x = y; }
+    match = re.match(r"^else\s+(.+)$", stripped)
+    if match:
+        statement = translate_expr(match.group(1))
+        return f"{indent}}} else {{ {statement}; }}{comment_tail}\n", False, True
 
     # 6. loopCsv "file.csv" as city:
     match = re.match(r'^loopCsv\s+(["\'].+?["\'])\s+as\s+(.+?):$', stripped)
     if match:
         csv_file, var = match.groups()
         return (
-            f"{indent}foreach (array_map('str_getcsv', file({csv_file})) as ${var}) {{\n",
+            f"{indent}foreach (readCsv({csv_file}) as ${var.strip()}) {{{comment_tail}\n",
             True,
             False,
         )
 
     # 7. break
     if stripped == "break":
-        return f"{indent}break;\n", False, False
+        return f"{indent}break;{comment_tail}\n", False, False
 
     # 8. Handle space-separated function calls loaded from lib/spaceFunctions.txt
     space_funcs = load_space_functions()
     first_word = stripped.split()[0] if stripped else ""
-    if first_word in space_funcs:
+    if first_word in space_funcs and "(" not in stripped:
         args_payload = stripped[len(first_word) :].strip()
+        if first_word in SPACE_CALL_ARITY:
+            arg_count = SPACE_CALL_ARITY[first_word]
+            raw_args = split_top_level_whitespace(args_payload, arg_count)
+            if len(raw_args) == arg_count:
+                translated_args = ", ".join(translate_expr(arg) for arg in raw_args)
+                return (
+                    f"{indent}{first_word}({translated_args});{comment_tail}\n",
+                    False,
+                    False,
+                )
+
         translated_args = translate_expr(args_payload)
-        return f"{indent}{first_word}({translated_args});\n", False, False
+        return f"{indent}{first_word}({translated_args});{comment_tail}\n", False, False
+
+    # 8b. Basic assignment support: lhs = rhs
+    match = re.match(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$", stripped)
+    if match:
+        lhs, rhs = match.groups()
+        return f"{indent}${lhs} = {translate_expr(rhs)};{comment_tail}\n", False, False
 
     # 9. General Function mappings & assignments
     translated = translate_expr(stripped)
-    return f"{indent}{translated};\n", False, False
+    return f"{indent}{translated};{comment_tail}\n", False, False
 
 
 def translate_expr(expr):
+    expr = normalize_space_call(expr.strip())
+
+    # Auto-quote plain emails written without quotes.
+    expr = re.sub(
+        r"(?<![\w'\"])\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b(?![\w'\"])",
+        r"'\1'",
+        expr,
+    )
+
     # Handle associative array shorthand: name -> "james" => 'name' => 'james'
     expr = re.sub(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*->\s*", r"'\1' => ", expr)
+
+    # Convert Python-like dict keys to PHP style ['key' => value]
+    expr = re.sub(r'"([a-zA-Z_][a-zA-Z0-9_]*)"\s*:\s*', r"'\1' => ", expr)
+    expr = re.sub(r"'([a-zA-Z_][a-zA-Z0-9_]*)'\s*:\s*", r"'\1' => ", expr)
 
     # Map print -> echo
     expr = re.sub(r"\bprint\s+", "echo ", expr)
 
     # Built-in shorthand translations
-    expr = re.sub(r"\bgetPost\s*", "$_POST", expr)
-    expr = re.sub(r"\bgetUrl\s*", "$_SERVER['REQUEST_URI']", expr)
-    expr = re.sub(r"\bsanitize\((.*?)\)", r"htmlspecialchars(\1)", expr)
-    expr = re.sub(
-        r'\bconnectDb\((["\'].*?["\'])\)', r"new PDO('sqlite:\1')", expr
-    )
-    expr = re.sub(
-        r'\bselect\((\w+),\s*(["\'].*?["\']),\s*(.*?)\)',
-        r"\1->query('SELECT * FROM ' . \2 . ' WHERE ' . \3)->fetchAll()",
-        expr,
-    )
-    expr = re.sub(
-        r"\binsert\((\w+),\s*(\w+),\s*(.*?)\)",
-        r"// insert logic for \1, \2, \3",
-        expr,
-    )
-    expr = re.sub(r"\bredirect\s+(.+)", r"header('Location: ' . \1); exit;", expr)
-    expr = re.sub(r"\bsetSession\s+(.+?)\s+(.+)", r"$_SESSION[\1] = \2", expr)
-    expr = re.sub(r"\bgetSession\s+(.+)", r"$_SESSION[\1]", expr)
-    expr = re.sub(
-        r'\bsetLocalstorage\s+(.+?)\s+(.+)',
-        r"setcookie(\1, \2, time() + (86400 * 30), '/')",
-        expr,
-    )
-    expr = re.sub(r"\bgetLocalstorage\s+(.+)", r"$_COOKIE[\1]", expr)
-    expr = re.sub(r"\bdbQuery\((.*?)\)", r"$db->query(\1)", expr)
-    expr = re.sub(r"\bexit\((.*?)\)", r"echo json_encode(\1); exit;", expr)
+    expr = re.sub(r"\bgetPost\b", "$_POST", expr)
+    expr = re.sub(r"\bgetUrl\b", "($_SERVER['REQUEST_URI'] ?? '')", expr)
+    expr = re.sub(r"\bparse\s*\(", "parseValue(", expr)
+    expr = re.sub(r"\bcurl\s*\(", "httpRequest(", expr)
+    expr = re.sub(r"\bdbQuery\s*\((.+?)\)", r"dbQuery($db, \1)", expr)
+    expr = re.sub(r"\bexit\s*\((.*?)\)", r"respondJson(\1)", expr)
+
+    # Fix calls written with parentheses but missing commas.
+    expr = re.sub(r"\bsetSession\((.+?)\s+(.+?)\)", r"setSession(\1, \2)", expr)
+    expr = re.sub(r"\bsetLocalstorage\((.+?)\s+(.+?)\)", r"setLocalstorage(\1, \2)", expr)
+
+    # Wrap insert third argument when key=>value is used without []
+    insert_match = re.match(r"^insert\((.+?),\s*(.+?),\s*(.+)\)$", expr)
+    if insert_match:
+        db_expr, table_expr, data_expr = insert_match.groups()
+        data_expr = data_expr.strip()
+        if "=>" in data_expr and not data_expr.startswith("["):
+            expr = f"insert({db_expr}, {table_expr}, [{data_expr}])"
+
+    # Space-call fallback when mixed in expressions
+    expr = re.sub(r"\bredirect\s+(.+)$", r"redirect(\1)", expr)
+    expr = re.sub(r"\bsetSession\s+(.+?)\s+(.+)$", r"setSession(\1, \2)", expr)
+    expr = re.sub(r"\bgetSession\s+(.+)$", r"getSession(\1)", expr)
+    expr = re.sub(r"\bsetLocalstorage\s+(.+?)\s+(.+)$", r"setLocalstorage(\1, \2)", expr)
+    expr = re.sub(r"\bgetLocalstorage\s+(.+)$", r"getLocalstorage(\1)", expr)
 
     php_keywords = {
         "true",
@@ -143,6 +267,7 @@ def translate_expr(expr):
         "if",
         "else",
         "foreach",
+        "response",
     }
 
     parts_in_quotes = re.split(r'(".*?"|\'.*?\')', expr)
@@ -159,6 +284,11 @@ def translate_expr(expr):
                 part,
             )
 
+            # Python-style literals to PHP
+            part = re.sub(r"\bTrue\b", "TRUE", part)
+            part = re.sub(r"\bFalse\b", "FALSE", part)
+            part = re.sub(r"\bNone\b", "NULL", part)
+
             def add_dollar(match):
                 word = match.group(0)
                 if word in php_keywords or word.startswith("$"):
@@ -166,11 +296,18 @@ def translate_expr(expr):
                 return f"${word}"
 
             processed = re.sub(
-                r"\b[a-zA-Z_][a-zA-Z0-9_]*\b(?!\s*\()", add_dollar, part
+                r"(?<!\$)\b[a-zA-Z_][a-zA-Z0-9_]*\b(?!\s*\()",
+                add_dollar,
+                part,
             )
             new_parts.append(processed)
 
-    return "".join(new_parts)
+    translated = "".join(new_parts)
+    translated = translated.replace("$$", "$")
+    translated = re.sub(r"\['\$([a-zA-Z_][a-zA-Z0-9_]*)'\]", r"['\1']", translated)
+    translated = re.sub(r"respondJson\(\s*\{", "respondJson([", translated)
+    translated = re.sub(r"\}\s*\)", "])", translated)
+    return translated
 
 
 def compile_file(filepath):
@@ -180,11 +317,16 @@ def compile_file(filepath):
     parts = re.split(r"(#\?|\?#)", content)
     output = []
     in_code_block = False
+    helpers_included = False
 
     for part in parts:
         if part == "#?":
             in_code_block = True
-            output.append("<?php\n")
+            if not helpers_included:
+                output.append("<?php\ninclude_once __DIR__ . '/helpers.php';\n")
+                helpers_included = True
+            else:
+                output.append("<?php\n")
             continue
         elif part == "?#":
             in_code_block = False
@@ -200,38 +342,36 @@ def compile_file(filepath):
                 indent_match = re.match(r"^(\s*)", line)
                 current_indent = len(indent_match.group(1)) if indent_match else 0
 
-                # Close blocks whose indentation is greater than or equal to current line, unless it's an 'else'
+                # Close blocks whose indentation is higher than current line.
+                # If current line is else, keep same-level block open for proper } else { emission.
                 stripped_check = line.strip()
-                is_current_else = stripped_check == "else"
+                is_current_else = bool(re.match(r"^else(\s|$)", stripped_check))
 
-                while block_stack and block_stack[-1]["indent"] >= current_indent:
+                while block_stack and (
+                    block_stack[-1] > current_indent
+                    or (
+                        block_stack[-1] == current_indent
+                        and not is_current_else
+                    )
+                ):
                     top = block_stack.pop()
-                    # If the block we are popping was an else, we need to close the parent 'if' block too
-                    closing_indent = " " * top["indent"]
+                    closing_indent = " " * top
                     output.append(f"{closing_indent}}}\n")
-                    if top["was_else"] and block_stack:
-                        # Pop the matching initial 'if' block container if necessary
-                        pass
 
                 translated_line, opens_block, is_else = translate_line(line)
                 output.append(translated_line)
 
                 if opens_block:
-                    if is_else:
-                        # Pop the previous 'if' block tracker so we don't double close prematurely
-                        if block_stack:
-                            block_stack.pop()
-                    block_stack.append(
-                        {
-                            "indent": current_indent,
-                            "was_else": is_else,
-                        }
-                    )
+                    if is_else and block_stack and block_stack[-1] == current_indent:
+                        block_stack.pop()
+                    block_stack.append(current_indent)
+                elif is_else and block_stack and block_stack[-1] == current_indent:
+                    block_stack.pop()
 
             # Close any remaining unclosed blocks at the end of the script block
             while block_stack:
                 top = block_stack.pop()
-                closing_indent = " " * top["indent"]
+                closing_indent = " " * top
                 output.append(f"{closing_indent}}}\n")
         else:
             output.append(part)
