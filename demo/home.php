@@ -1,0 +1,373 @@
+<?php
+include_once __DIR__ . '/../neohp/helpers.php';
+
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Sergi Alvarez Triviño
+include_once 'config.php';
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+// Pull dynamic content from URL + DB
+$url_slug = slugify(($_SERVER['REQUEST_URI'] ?? ''));
+$page_title = slugToWord($url_slug, "fcaps");
+$slug_chunk = parseValue($url_slug, "-", 2);
+setSession("last_slug", $url_slug);
+
+// Use DB profile id from config.pyh with a safe fallback path
+$db_status = "fallback";
+$db_error_message = "Database unavailable. Using fallback values.";
+
+try {
+  $db = connectDb("dbName");
+  $rows = select($db, "active = 1", "ORDER BY id DESC LIMIT 1");
+  $featured = $rows[0] ?? ['name' => 'Neohp Demo', 'email' => 'contact@mediagn.com'];
+  $db_status = "connected";
+  $db_error_message = "";
+} catch (\Throwable $err) {
+  $featured = ['name' => 'Neohp Demo', 'email' => 'contact@mediagn.com'];
+  $db_error_message = "Database connection or query failed. Using fallback values.";
+} finally {
+  $featured_name = $featured['name'];
+  $featured_email = $featured['email'];
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neohp Home Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-1: #fff6e8;
+      --bg-2: #ffd7a8;
+      --ink: #1f1a17;
+      --ink-soft: #5f534b;
+      --card: rgba(255, 255, 255, 0.74);
+      --accent: #0b8f8a;
+      --accent-2: #ff6f3d;
+      --line: rgba(31, 26, 23, 0.14);
+      --radius: 18px;
+      --shadow: 0 16px 45px rgba(26, 16, 10, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Outfit", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(11, 143, 138, 0.22), transparent 45%),
+        radial-gradient(circle at 88% 18%, rgba(255, 111, 61, 0.24), transparent 44%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2));
+    }
+
+    .wrapper {
+      width: min(1080px, 92vw);
+      margin: 0 auto;
+      padding: 42px 0 62px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .hero,
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+
+    .hero {
+      padding: 34px;
+      display: grid;
+      gap: 14px;
+      overflow: hidden;
+      position: relative;
+      transform: translateY(14px);
+      opacity: 0;
+      animation: rise-in 620ms ease forwards;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      right: -80px;
+      top: -120px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(11, 143, 138, 0.34), transparent 68%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 58px);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--ink-soft);
+      max-width: 64ch;
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 24px;
+      transform: translateY(10px);
+      opacity: 0;
+      animation: rise-in 680ms ease forwards;
+    }
+
+    .panel:nth-child(2) { animation-delay: 80ms; }
+    .panel:nth-child(3) { animation-delay: 160ms; }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      letter-spacing: -0.01em;
+    }
+
+    .kv {
+      margin: 6px 0;
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      align-items: start;
+      border-top: 1px dashed var(--line);
+      padding-top: 10px;
+    }
+
+    .k {
+      font-family: "Space Mono", monospace;
+      color: var(--ink-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .v {
+      font-size: 15px;
+      word-break: break-word;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "Space Mono", monospace;
+      font-size: 12px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(11, 143, 138, 0.12);
+      color: #0c5956;
+      border: 1px solid rgba(11, 143, 138, 0.24);
+    }
+
+    .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(11, 143, 138, 0.15);
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease;
+      box-shadow: 0 7px 16px rgba(20, 16, 12, 0.14);
+    }
+
+    .btn-main {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-alt {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 9px 18px rgba(20, 16, 12, 0.17);
+    }
+
+    .mini-note {
+      font-size: 13px;
+      color: var(--ink-soft);
+      margin-top: 10px;
+    }
+
+    @keyframes rise-in {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .panel {
+        padding: 20px;
+      }
+
+      .kv {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrapper">
+    <section class="hero">
+      <span class="eyebrow">Neohp Live Demo</span>
+      <h1 id="heroTitle">Loading page title...</h1>
+      <p id="heroText">This section will be filled from URL slug and database values generated in home.pyh.</p>
+      <span class="chip">
+        <span class="chip-dot"></span>
+        Last slug saved in session
+      </span>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>URL Derived Data</h2>
+        <div class="kv"><span class="k">Raw Slug</span><span class="v" id="slugRaw"></span></div>
+        <div class="kv"><span class="k">Pretty Title</span><span class="v" id="slugPretty"></span></div>
+        <div class="kv"><span class="k">Slug Chunk</span><span class="v" id="slugChunk"></span></div>
+      </article>
+
+      <article class="panel">
+        <h2>Featured DB Row</h2>
+        <div class="kv"><span class="k">Name</span><span class="v" id="dbName"></span></div>
+        <div class="kv"><span class="k">Email</span><span class="v" id="dbEmail"></span></div>
+        <div class="mini-note">Values loaded through connectDb("dbName") + select(...)</div>
+      </article>
+
+      <article class="panel">
+        <h2>Client-side Injection</h2>
+        <div class="btn-row">
+          <button class="btn-main" id="copySlugBtn">Copy Slug</button>
+          <button class="btn-alt" id="toggleAccentBtn">Toggle Accent</button>
+        </div>
+        <div class="mini-note" id="actionNote">Try clicking the buttons to test JS behavior.</div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const pageData = {
+      urlSlug: <?php
+ echo json_encode($url_slug);
+?>,
+      titleFromSlug: <?php
+ echo json_encode($page_title);
+?>,
+      slugChunk: <?php
+ echo json_encode($slug_chunk);
+?>,
+      featuredName: <?php
+ echo json_encode($featured_name);
+?>,
+      featuredEmail: <?php
+ echo json_encode($featured_email);
+?>,
+      dbStatus: <?php
+ echo json_encode($db_status);
+?>,
+      dbError: <?php
+ echo json_encode($db_error_message);
+?>
+    };
+
+    const els = {
+      heroTitle: document.getElementById("heroTitle"),
+      heroText: document.getElementById("heroText"),
+      slugRaw: document.getElementById("slugRaw"),
+      slugPretty: document.getElementById("slugPretty"),
+      slugChunk: document.getElementById("slugChunk"),
+      dbName: document.getElementById("dbName"),
+      dbEmail: document.getElementById("dbEmail"),
+      actionNote: document.getElementById("actionNote"),
+      copyBtn: document.getElementById("copySlugBtn"),
+      toggleBtn: document.getElementById("toggleAccentBtn")
+    };
+
+    function injectContent() {
+      els.heroTitle.textContent = pageData.titleFromSlug || "Untitled Page";
+      els.heroText.textContent = pageData.dbStatus === "connected"
+        ? "Live DB content and slug data were injected successfully."
+        : "DB failed, so fallback content was injected while keeping the page functional.";
+      els.slugRaw.textContent = pageData.urlSlug || "(empty)";
+      els.slugPretty.textContent = pageData.titleFromSlug || "(empty)";
+      els.slugChunk.textContent = pageData.slugChunk || "(none)";
+      els.dbName.textContent = pageData.featuredName || "No record";
+      els.dbEmail.textContent = pageData.featuredEmail || "No email";
+      els.actionNote.textContent = pageData.dbStatus === "connected"
+        ? "Database connected. Interactive buttons are ready."
+        : "Fallback mode: " + (pageData.dbError || "Unknown DB error");
+    }
+
+    injectContent();
+
+    els.copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pageData.urlSlug || "");
+        els.actionNote.textContent = "Slug copied to clipboard.";
+      } catch (err) {
+        els.actionNote.textContent = "Could not copy slug in this browser.";
+      }
+    });
+
+    let toggled = false;
+    els.toggleBtn.addEventListener("click", () => {
+      toggled = !toggled;
+      document.documentElement.style.setProperty("--accent", toggled ? "#ca3f2f" : "#0b8f8a");
+      els.actionNote.textContent = toggled
+        ? "Accent switched to warm mode."
+        : "Accent switched to cool mode.";
+    });
+  </script>
+</body>
+</html>

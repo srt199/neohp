@@ -35,6 +35,12 @@ Expected base files:
 - index.pyh
 - lib/spaceFunctions.txt
 
+Runtime output:
+
+- Generated PHP files stay next to their .pyh source files.
+- Shared runtime helpers are copied into target_dir/neohp/helpers.php.
+- Generated files include that shared helper file using the correct relative path.
+
 ## Quick Start
 
 Requirements:
@@ -67,6 +73,8 @@ Behavior:
 - Watches the target directory recursively, including subdirectories.
 - Detects changed or newly-created .pyh files.
 - Generates the output .php file in the same directory as each .pyh source file.
+- Copies the runtime helper file into target_dir/neohp/helpers.php.
+- Makes each generated PHP file include that shared helper runtime path automatically.
 
 ## Minimal Example
 
@@ -81,7 +89,7 @@ Input file example.pyh:
 
 Generated example.php:
 
-- Includes helpers.php automatically.
+- Includes the shared runtime helper file from neohp/helpers.php automatically.
 - Includes config.php (compiled from config.pyh).
 - Executes standard PHP helper calls.
 

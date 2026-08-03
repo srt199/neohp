@@ -3,6 +3,7 @@
 
 import os
 import re
+import shutil
 import sys
 import time
 
@@ -18,6 +19,27 @@ SPACE_CALL_ARITY = {
     "setLocalstorage": 2,
     "getLocalstorage": 1,
 }
+
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HELPERS_SOURCE = os.path.join(SCRIPT_DIR, "helpers.php")
+RUNTIME_DIRNAME = "neohp"
+
+
+def ensure_runtime_helpers(target_dir):
+    runtime_dir = os.path.join(os.path.abspath(target_dir), RUNTIME_DIRNAME)
+    os.makedirs(runtime_dir, exist_ok=True)
+
+    runtime_helpers_path = os.path.join(runtime_dir, "helpers.php")
+    shutil.copy2(HELPERS_SOURCE, runtime_helpers_path)
+    return runtime_helpers_path
+
+
+def build_helpers_include(filepath, runtime_helpers_path):
+    php_dir = os.path.dirname(os.path.abspath(filepath))
+    relative_helpers = os.path.relpath(runtime_helpers_path, php_dir)
+    relative_helpers = relative_helpers.replace(os.sep, "/")
+    return f"<?php\ninclude_once __DIR__ . '/{relative_helpers}';\n"
 
 
 def split_inline_comment(line):
@@ -347,7 +369,7 @@ def translate_expr(expr):
     return translated
 
 
-def compile_file(filepath):
+def compile_file(filepath, runtime_helpers_path):
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -360,7 +382,7 @@ def compile_file(filepath):
         if part == "#?":
             in_code_block = True
             if not helpers_included:
-                output.append("<?php\ninclude_once __DIR__ . '/helpers.php';\n")
+                output.append(build_helpers_include(filepath, runtime_helpers_path))
                 helpers_included = True
             else:
                 output.append("<?php\n")
@@ -430,8 +452,9 @@ def iter_pyh_files(target_dir):
 
 
 def compile_all(target_dir):
+    runtime_helpers_path = ensure_runtime_helpers(target_dir)
     for filepath in iter_pyh_files(target_dir):
-        compile_file(filepath)
+        compile_file(filepath, runtime_helpers_path)
 
 
 def snapshot_pyh_mtimes(target_dir):
@@ -454,13 +477,14 @@ def watch_and_compile(target_dir, interval=0.8):
 
     try:
         while True:
+            runtime_helpers_path = ensure_runtime_helpers(target_dir)
             current_mtimes = snapshot_pyh_mtimes(target_dir)
 
             # Recompile changed and newly-created .pyh files.
             for filepath, mtime in current_mtimes.items():
                 previous = known_mtimes.get(filepath)
                 if previous is None or mtime > previous:
-                    compile_file(filepath)
+                    compile_file(filepath, runtime_helpers_path)
 
             known_mtimes = current_mtimes
             time.sleep(interval)

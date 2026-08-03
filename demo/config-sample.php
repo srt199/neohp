@@ -1,5 +1,5 @@
 <?php
-include_once __DIR__ . '/helpers.php';
+include_once __DIR__ . '/../neohp/helpers.php';
 
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sergi Alvarez Triviño
