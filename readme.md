@@ -50,6 +50,24 @@ Install and compile:
 
 This command compiles every .pyh file under the target folder into a .php file with the same name.
 
+Watch mode (auto-compile on save):
+
+	python3 interpreter.py . --watch
+
+Custom polling interval:
+
+	python3 interpreter.py . --watch --interval 0.5
+
+Help:
+
+	python3 interpreter.py --help
+
+Behavior:
+
+- Watches the target directory recursively, including subdirectories.
+- Detects changed or newly-created .pyh files.
+- Generates the output .php file in the same directory as each .pyh source file.
+
 ## Minimal Example
 
 Input file example.pyh:
@@ -144,13 +162,13 @@ Neohp compiles shorthand to helper calls in helpers.php, including:
 
 ## Current Limitations
 
-- The interpreter currently runs as a compile command, not a built-in file watcher.
+- Watch mode uses polling (mtime checks), not OS-level filesystem events.
 - Some advanced nested shorthand patterns are still evolving.
 - Multiline object literals in .pyh are limited; prefer single-line arrays for now.
 
 ## Roadmap Ideas
 
-- Optional watch mode for auto-compile on save.
+- Optional native filesystem events backend (faster than polling).
 - Better multiline parsing for arrays and config blocks.
 - Better diagnostics (line-level compile warnings).
 - More helper presets for forms, auth, and CMS tasks.

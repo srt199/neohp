@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import time
 
 
 SPACE_CALL_ARITY = {
@@ -421,12 +422,99 @@ def compile_file(filepath):
     print(f"Compiled: {filepath} -> {out_path}")
 
 
-def main():
-    target_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+def iter_pyh_files(target_dir):
     for root, _, files in os.walk(target_dir):
         for file in files:
             if file.endswith(".pyh"):
-                compile_file(os.path.join(root, file))
+                yield os.path.join(root, file)
+
+
+def compile_all(target_dir):
+    for filepath in iter_pyh_files(target_dir):
+        compile_file(filepath)
+
+
+def snapshot_pyh_mtimes(target_dir):
+    mtimes = {}
+    for filepath in iter_pyh_files(target_dir):
+        try:
+            mtimes[filepath] = os.path.getmtime(filepath)
+        except OSError:
+            # File may disappear between walk and stat.
+            continue
+    return mtimes
+
+
+def watch_and_compile(target_dir, interval=0.8):
+    target_dir = os.path.abspath(target_dir)
+    print(f"Watching: {target_dir} (recursive) | interval={interval}s")
+
+    compile_all(target_dir)
+    known_mtimes = snapshot_pyh_mtimes(target_dir)
+
+    try:
+        while True:
+            current_mtimes = snapshot_pyh_mtimes(target_dir)
+
+            # Recompile changed and newly-created .pyh files.
+            for filepath, mtime in current_mtimes.items():
+                previous = known_mtimes.get(filepath)
+                if previous is None or mtime > previous:
+                    compile_file(filepath)
+
+            known_mtimes = current_mtimes
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nStopped watching.")
+
+
+def main():
+    args = sys.argv[1:]
+    target_dir = "."
+    watch_mode = False
+    interval = 0.8
+
+    if args and not args[0].startswith("--"):
+        target_dir = args[0]
+        args = args[1:]
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("--watch", "-w"):
+            watch_mode = True
+            i += 1
+            continue
+        if arg == "--interval":
+            if i + 1 >= len(args):
+                print("Error: --interval requires a numeric value.")
+                return
+            try:
+                interval = float(args[i + 1])
+                if interval <= 0:
+                    raise ValueError
+            except ValueError:
+                print("Error: --interval must be a positive number.")
+                return
+            i += 2
+            continue
+        if arg in ("--help", "-h"):
+            print(
+                "Usage: python3 interpreter.py [target_dir] [--watch|-w] [--interval seconds]"
+            )
+            print("  target_dir: directory to compile/watch recursively (default: .)")
+            print("  --watch, -w: keep running and auto-compile changed .pyh files")
+            print("  --interval: polling interval in seconds for watch mode (default: 0.8)")
+            return
+
+        print(f"Error: unknown argument: {arg}")
+        print("Try: python3 interpreter.py --help")
+        return
+
+    if watch_mode:
+        watch_and_compile(target_dir, interval)
+    else:
+        compile_all(target_dir)
 
 
 if __name__ == "__main__":
