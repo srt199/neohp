@@ -1,6 +1,6 @@
 # Neohp
 
-Neohp is a Python-style language converter to PHP.
+### A Python-style language converter to PHP.
 
 It allows to use Python-like easy code inside website files, with no compilation times or frameworks: Write short backend logic directly inside HTML pages, then it converts automatically into PHP files that can be uploaded and run on any standard hosting.
 
@@ -14,7 +14,7 @@ It allows to use Python-like easy code inside website files, with no compilation
 - Easier, faster syntax for common PHP functions.
 - Python style code you can embed inside your HTML + JS files to handle data. No compile times like frameworks.
 - Generates normal PHP files you can deploy anywhere.
-- The aim is to replace clunky, slow frameworks and go back to basics. Files that contains all HTML, JS, CSS and Backend code that are run by any server and shown immediately in any browser. All of PHP's advantages, deployment speed and compatibility, but with Python's more modern syntax.
+- The aim is to **replace clunky, slow frameworks and go back to basics**. Files that contain all HTML, JS, CSS and Backend code that are run by any server and shown immediately in any browser. All of PHP's advantages, deployment speed and compatibility, but with Python's more modern syntax.
 - Current version aimed for web design and light backend tasks (You can also use any PHP code you want next to the python-style code, when you need more functions still not implemented)
 
 ## How It Works
