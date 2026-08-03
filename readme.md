@@ -1,8 +1,8 @@
 # Neohp
 
-Neohp is a lightweight Python-style syntax layer that compiles into plain PHP.
+Neohp is a Python-style language converter into PHP.
 
-It is designed for fast web prototyping: write short backend logic directly inside HTML pages, then it converts it into readable PHP files that can run on any standard hosting.
+It allows to use Python-like easy code inside website files, with no compilation times or frameworks: Write short backend logic directly inside HTML pages, then it converts automatically into PHP files that can be uploaded and run on any standard hosting.
 
 ![Language](https://img.shields.io/badge/language-Python--style-blue)
 ![Output](https://img.shields.io/badge/output-PHP-777bb4)
