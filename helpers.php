@@ -16,7 +16,87 @@ function sanitize($value) {
     return $value;
 }
 
+function setDbConfig($id, $config) {
+    if (!is_string($id) || $id === '') {
+        throw new InvalidArgumentException('setDbConfig() requires a non-empty string id.');
+    }
+
+    if (!is_array($config)) {
+        throw new InvalidArgumentException('setDbConfig() expects an associative array as config.');
+    }
+
+    if (!isset($GLOBALS['NEOHP_DB_CONFIGS']) || !is_array($GLOBALS['NEOHP_DB_CONFIGS'])) {
+        $GLOBALS['NEOHP_DB_CONFIGS'] = [];
+    }
+
+    $GLOBALS['NEOHP_DB_CONFIGS'][$id] = $config;
+    return $config;
+}
+
+function getDbConfig($id) {
+    if (!is_string($id) || $id === '') {
+        return null;
+    }
+
+    $all = $GLOBALS['NEOHP_DB_CONFIGS'] ?? [];
+    return $all[$id] ?? null;
+}
+
+function setDefaultDb($id) {
+    if (!is_string($id) || $id === '') {
+        throw new InvalidArgumentException('setDefaultDb() requires a non-empty string id.');
+    }
+    $GLOBALS['NEOHP_DEFAULT_DB_ID'] = $id;
+    return $id;
+}
+
+function setDefaultTable($tableName) {
+    $GLOBALS['NEOHP_DEFAULT_TABLE'] = (string) $tableName;
+    return $tableName;
+}
+
+function setTelegramConfig($botToken, $chatId) {
+    $GLOBALS['NEOHP_TELEGRAM_BOT_TOKEN'] = (string) $botToken;
+    $GLOBALS['NEOHP_TELEGRAM_CHAT_ID'] = (string) $chatId;
+    return true;
+}
+
 function connectDb($databaseName = null) {
+    $dbId = is_string($databaseName) && $databaseName !== ''
+        ? $databaseName
+        : ($GLOBALS['NEOHP_DEFAULT_DB_ID'] ?? null);
+
+    $profile = $dbId ? getDbConfig($dbId) : null;
+
+    if (is_array($profile)) {
+        $driver = (string) ($profile['driver'] ?? 'mysql');
+
+        if ($driver === 'sqlite') {
+            $sqlitePath = $profile['sqlite_path'] ?? ':memory:';
+            $dsn = str_starts_with((string) $sqlitePath, 'sqlite:')
+                ? (string) $sqlitePath
+                : 'sqlite:' . (string) $sqlitePath;
+            $pdo = new PDO($dsn);
+        } else {
+            $host = (string) ($profile['host'] ?? '127.0.0.1');
+            $charset = (string) ($profile['charset'] ?? 'utf8mb4');
+            $username = (string) ($profile['username'] ?? '');
+            $password = (string) ($profile['password'] ?? '');
+            $dbName = (string) ($profile['dbname'] ?? '');
+
+            if ($dbName === '') {
+                throw new InvalidArgumentException("Missing dbname in DB profile: {$dbId}");
+            }
+
+            $dsn = sprintf('%s:host=%s;dbname=%s;charset=%s', $driver, $host, $dbName, $charset);
+            $pdo = new PDO($dsn, $username, $password);
+        }
+
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        return $pdo;
+    }
+
     $driver = defined('DB_DRIVER') ? DB_DRIVER : 'mysql';
 
     if ($driver === 'sqlite') {
@@ -44,7 +124,9 @@ function connectDb($databaseName = null) {
 }
 
 function select($pdo, $conditions = '1=1', $extraSql = '', $tableName = null) {
-    $tableName = $tableName ?: (defined('DB_DEFAULT_TABLE') ? DB_DEFAULT_TABLE : null);
+    $tableName = $tableName
+        ?: ($GLOBALS['NEOHP_DEFAULT_TABLE'] ?? null)
+        ?: (defined('DB_DEFAULT_TABLE') ? DB_DEFAULT_TABLE : null);
     if (!$tableName) {
         throw new InvalidArgumentException('Missing table name. Pass select(..., ..., ..., $tableName) or define DB_DEFAULT_TABLE.');
     }
@@ -115,7 +197,10 @@ function dbQuery($pdo, $sql, $params = []) {
 }
 
 function pingTelegram($botId, $message, $chatId = null) {
-    $chatId = $chatId ?: (defined('TELEGRAM_CHAT_ID') ? TELEGRAM_CHAT_ID : null);
+    $botId = $botId ?: ($GLOBALS['NEOHP_TELEGRAM_BOT_TOKEN'] ?? null);
+    $chatId = $chatId
+        ?: ($GLOBALS['NEOHP_TELEGRAM_CHAT_ID'] ?? null)
+        ?: (defined('TELEGRAM_CHAT_ID') ? TELEGRAM_CHAT_ID : null);
     if (!$botId || !$chatId || !$message) {
         return false;
     }
