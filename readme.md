@@ -11,17 +11,17 @@ It is designed for fast web prototyping: write short backend logic directly insi
 
 ## Why Neohp
 
-- Write less for common backend tasks.
-- Keep template-like readability for designers.
-- Reuse helper functions from one central helpers.php file.
-- Keep generated output as normal PHP you can debug anywhere.
+- Easier, faster syntax for common PHP functions.
+- Python style code you can embed inside your HTML + JS files to handle data. No compile times like frameworks.
+- Keep generated output as normal PHP you can deploy anywhere.
+- Current version aimed for web design and light backend tasks (You can also embed any PHP code for any missing functions you need inside the .pyh files)
 
 ## How It Works
 
-1. Write your page in a .pyh file.
-2. Use #? and ?# to mark code blocks.
-3. Run the interpreter.
-4. Neohp generates a matching .php file.
+1. Run the interpreter.
+2. Write your pages in .pyh files.
+3. Use #? and ?# to mark code blocks.
+4. Neohp generates matching .php files instantly.
 
 HTML outside code blocks is preserved as-is.
 
@@ -32,7 +32,6 @@ Expected base files:
 - interpreter.py
 - helpers.php
 - config.pyh
-- index.pyh
 - lib/spaceFunctions.txt
 
 Runtime output:
@@ -177,6 +176,7 @@ Neohp compiles shorthand to helper calls in helpers.php, including:
 
 ## Roadmap Ideas
 
+- Feel free to add support for any missing functions that you need
 - Optional native filesystem events backend (faster than polling).
 - Better multiline parsing for arrays and config blocks.
 - Better diagnostics (line-level compile warnings).
