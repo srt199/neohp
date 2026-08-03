@@ -1,30 +1,166 @@
-# Neohp: A simple Python style language that gets converted into PHP in real time.
+# Neohp
 
-Suitable for Web Design and light backend work by now. 
+Neohp is a lightweight Python-style syntax layer that compiles .pyh files into plain PHP.
 
-It aims to make it easier and faster to grab or manipulate data from backend with simple Python style commands, embedded right inside your html file. Inject any data to the html page, and the resulting php file is shown instantly on your server.
+It is designed for fast web prototyping: write short backend logic directly inside HTML pages, then compile to readable PHP files that can run on standard hosting.
 
-I have only implemented some functions that were useful on my day to day web development work and I wanted to simplify, by now.
+![Language](https://img.shields.io/badge/language-Python--style-blue)
+![Output](https://img.shields.io/badge/output-PHP-777bb4)
+![Status](https://img.shields.io/badge/status-early%20stage-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Feel free to push more requests to the code with your custom functions to expand it, if you need it to have some function I didn't have time to implement!
+## Why Neohp
 
-If something is missing, you can combine this easy language syntax with any php code you want in the same .pyh file, as the interpreter will take php code as is, and it will be used on the output file.
+- Write less for common backend tasks.
+- Keep template-like readability for designers.
+- Reuse helper functions from one central helpers.php file.
+- Keep generated output as normal PHP you can debug anywhere.
 
-Will give credit to contributors. 
+## How It Works
 
-Let's make something easier and funnier to use for our daily PHP development work!
+1. Write your page in a .pyh file.
+2. Use #? and ?# to mark code blocks.
+3. Run the interpreter.
+4. Neohp generates a matching .php file.
 
-Discord link | Contact Email | Donations | Documentation (just make it on markdown or txt format in another file, or html)
+HTML outside code blocks is preserved as-is.
 
+## Project Structure
 
-Usage:
-1. Git clone repourl
-2. python3 (projectname).py path-to-project - This will keep the interpreter running on the background and checking the .pyh files inside that project folder . Open another tab on the terminal or run it as a background command
-3. Cd to your project folder
-4. You can create a .pyh file, and when hitting save it will automatically generate a php file with the same name
+Expected base files:
 
-For a seamless development environment, pass a 3rd parameter when calling projectname.py with the path to your test server, so it will automatically update the php file and you will see the changes on your server (3rd param is the output path for the generated php files)
+- interpreter.py
+- helpers.php
+- config.pyh
+- index.pyh
+- lib/spaceFunctions.txt
 
+## Quick Start
 
-Extra info:
-- You can normally run functions with or without parentheses. For funcs with more than 2 params, it is recommended to use parentheses.
+Requirements:
+
+- Python 3.9+
+- PHP 8.0+
+
+Install and compile:
+
+	git clone <your-repo-url>
+	cd neohp
+	python3 interpreter.py .
+
+This command compiles every .pyh file under the target folder into a .php file with the same name.
+
+## Minimal Example
+
+Input file example.pyh:
+
+	#?
+	include config.pyh
+	debug_on
+	db = connectDb("dbName")
+	users = dbQuery("SELECT * FROM users WHERE active = 1")
+	?#
+
+Generated example.php:
+
+- Includes helpers.php automatically.
+- Includes config.php (compiled from config.pyh).
+- Executes standard PHP helper calls.
+
+## Config Profiles (config.pyh)
+
+Neohp supports profile-based DB config. The value passed to connectDb("profileId") maps to a profile set in config.pyh.
+
+Example:
+
+	#?
+	setDbConfig("dbName", [driver->"mysql", host->"127.0.0.1", dbname->"neohp_app", username->"root", password->"", charset->"utf8mb4", default_table->"users"])
+	setDefaultDb("dbName")
+	setDefaultTable("users")
+	setTelegramConfig("REPLACE_BOT_TOKEN", "REPLACE_CHAT_ID")
+	?#
+
+Then in any page:
+
+	db = connectDb("dbName")
+
+## Syntax Cheatsheet
+
+Blocks:
+
+- #? starts a PHP code block
+- ?# ends a PHP code block
+
+Common patterns:
+
+- include config.pyh
+- debug_on
+- if condition:
+- else statement
+- foreach list as item:
+- loopCsv "cities.csv" as city:
+
+Shorthand examples:
+
+- arrayPost = sanitize(getPost)
+- url_slug = slugify getUrl
+- product_name = slugToWord url_slug "fcaps"
+- setSession "user_id" 5
+- user_id = getSession "user_id"
+- exit({"status": "success"})
+
+## Built-in Helper Function Map
+
+Neohp compiles shorthand to helper calls in helpers.php, including:
+
+- sanitize
+- connectDb
+- select
+- insert
+- dbQuery
+- postRequest
+- httpRequest (via curl(...))
+- pingTelegram
+- slugify
+- slugToWord
+- parseValue (via parse(...))
+- readCsv
+- replaceInPageText
+- setSession / getSession
+- setLocalstorage / getLocalstorage
+- redirect
+- respondJson (via exit({...}))
+
+## Notes for Contributors
+
+- Keep generated PHP valid and readable.
+- Prefer helper-based translations over inline complex PHP.
+- Add new simple-call functions to lib/spaceFunctions.txt when needed.
+- Keep examples realistic, with defined variables and valid params.
+
+## Current Limitations
+
+- The interpreter currently runs as a compile command, not a built-in file watcher.
+- Some advanced nested shorthand patterns are still evolving.
+- Multiline object literals in .pyh are limited; prefer single-line arrays for now.
+
+## Roadmap Ideas
+
+- Optional watch mode for auto-compile on save.
+- Better multiline parsing for arrays and config blocks.
+- Better diagnostics (line-level compile warnings).
+- More helper presets for forms, auth, and CMS tasks.
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+If you propose a new syntax command, include:
+
+1. Example .pyh input
+2. Expected PHP output
+3. Helper requirements (if any)
+
+## License
+
+Add your preferred license here (for example MIT).
