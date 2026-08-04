@@ -76,7 +76,7 @@ Behavior:
 
 ## Minimal Example
 
-Input file example.pyh:
+example.pyh:
 ```python
 	#?
 	include config.pyh
