@@ -82,6 +82,7 @@ example.pyh:
 	include config.pyh
 	debug_on
 
+    arrayPost = sanitize(getPost)
 	db = connectDb("dbName")
     dbData = select(db, "active = 1", extraSqlParams)
 
