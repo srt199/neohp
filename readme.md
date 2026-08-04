@@ -84,7 +84,7 @@ example.pyh:
 
     arrayPost = sanitize(getPost)
 	db = connectDb("dbName")
-    dbData = select(db, "active = 1", extraSqlParams)
+    dbData = select(db, "active = 1")
 
     foreach dbData as row:
         if row.email == "john@gmail.com" :
