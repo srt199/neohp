@@ -105,6 +105,7 @@ example.pyh:
         cityPreview = city
         break
     ?#
+    <!-- End tags and back to html -->
     <div> <p> #? print cityPreview ?# </p> </div>
     <!-- MORE HTML CODE ... -->
     #?
@@ -115,7 +116,7 @@ example.pyh:
     ?#
     <!-- ANY HTML, PHP, JS CODE IN ANY PLACE WORKS. JUST CLOSE NEOHP TAGS  -->
     <span> Hello #? print name ?# </span>
-    
+
     #?
     redirect "https://weblabs.es"
 
