@@ -86,9 +86,9 @@ example.pyh:
     dbData = select(db, "active = 1", extraSqlParams)
 
     foreach dbData as row:
-    if row.email == "john@gmail.com" :
-        email = "Email found"
-        break
+        if row.email == "john@gmail.com" :
+            email = "Email found"
+            break
 
     if arrayPost.customer == "on":
         isSale = TRUE
