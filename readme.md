@@ -119,7 +119,7 @@ Input file example.pyh:
     email1 = getLocalstorage "email"
 
     users = dbQuery("SELECT * FROM users WHERE active = 1") #run any query
-    
+
     response = curl(url, "post", headers, arrayData)
     response_ok = response.ok
     response_status = response.status
@@ -127,6 +127,7 @@ Input file example.pyh:
 
     exit({"status": "success", "http_status": response_status, "ok": response_ok, "api": api_payload}) #exits and returns json headers
     ?#
+```
 
 Generated example.php:
 
