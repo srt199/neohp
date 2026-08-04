@@ -106,12 +106,17 @@ example.pyh:
         break
     ?#
     <div> <p> #? print cityPreview ?# </p> </div>
-
+    <!-- MORE HTML CODE ... -->
     #?
     pingTelegram("", "This is your message") 
 
     postRequest(url, [name->"john", email->"john@gmail.com"], headers)
 
+    ?#
+    <!-- ANY HTML, PHP, JS CODE IN ANY PLACE WORKS. JUST CLOSE NEOHP TAGS  -->
+    <span> Hello #? print name ?# </span>
+    
+    #?
     redirect "https://weblabs.es"
 
     setSession "user_id" 5
