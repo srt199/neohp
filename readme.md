@@ -77,13 +77,56 @@ Behavior:
 ## Minimal Example
 
 Input file example.pyh:
-
+```python
 	#?
 	include config.pyh
 	debug_on
+
 	db = connectDb("dbName")
-	users = dbQuery("SELECT * FROM users WHERE active = 1")
-	?#
+    dbData = select(db, "active = 1", extraSqlParams)
+
+    foreach dbData as row:
+    if row.email == "john@gmail.com" :
+        email = "Email found"
+        break
+
+    if arrayPost.customer == "on":
+        isSale = TRUE
+    else isSale = FALSE
+
+    #More example funcs
+
+    insert(db, tableName, name -> "james")
+    array1 = [name->"john", email->"john@gmail.com"]
+    insert(db, tableName, array1)
+
+    loopCsv "cities.csv" as city:
+        cityPreview = city
+        break
+    ?#
+    <div> <p> #? print cityPreview ?# </p> </div>
+
+    #?
+    pingTelegram("", "This is your message") 
+
+    postRequest(url, [name->"john", email->"john@gmail.com"], headers)
+
+    redirect "https://weblabs.es"
+
+    setSession "user_id" 5
+    user_id = getSession "user_id"
+    setLocalstorage "email" "john@gmail.com"
+    email1 = getLocalstorage "email"
+
+    users = dbQuery("SELECT * FROM users WHERE active = 1") #run any query
+    
+    response = curl(url, "post", headers, arrayData)
+    response_ok = response.ok
+    response_status = response.status
+    api_payload = response.body
+
+    exit({"status": "success", "http_status": response_status, "ok": response_ok, "api": api_payload}) #exits and returns json headers
+    ?#
 
 Generated example.php:
 
